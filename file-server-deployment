@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Update and upgrade the system
+sudo apt update && sudo apt upgrade -y
+
+# Install necessary packages
+sudo apt install -y samba netdata
+
+# Configure Samba
+SAMBA_CONF="/etc/samba/smb.conf"
+SHARED_DIR="/srv/samba/share"
+USERNAME="sambauser"
+PASSWORD="password"
+
+# Create a shared directory
+sudo mkdir -p $SHARED_DIR
+sudo chown -R nobody:nogroup $SHARED_DIR
+sudo chmod -R 0775 $SHARED_DIR
+
+# Backup original Samba configuration file
+sudo cp $SAMBA_CONF "$SAMBA_CONF.bak"
+
+# Configure Samba
+cat <<EOL | sudo tee -a $SAMBA_CONF
+
+[share]
+   path = $SHARED_DIR
+   browseable = yes
+   read only = no
+   guest ok = yes
+EOL
+
+# Restart Samba service
+sudo systemctl restart smbd
+
+# Add Samba user
+sudo smbpasswd -a $USERNAME
+
+# Enable and start Netdata
+sudo systemctl enable netdata
+sudo systemctl start netdata
+
+# Optional: Secure Netdata access (bind to localhost)
+NETDATA_CONF="/etc/netdata/netdata.conf"
+sudo cp $NETDATA_CONF "$NETDATA_CONF.bak"
+sudo sed -i 's/# bind to = ::/bind to = 127.0.0.1/' $NETDATA_CONF
+sudo systemctl restart netdata
+
+# Configure firewall (if UFW is enabled)
+if sudo ufw status | grep -q "Status: active"; then
+    sudo ufw allow Samba
+    sudo ufw allow 19999/tcp
+fi
+
+echo "Deployment complete. Access Samba share at \\<server_ip>\share and Netdata at http://<server_ip>:19999"
