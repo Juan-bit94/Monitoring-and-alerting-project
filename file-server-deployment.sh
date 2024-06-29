@@ -1,26 +1,32 @@
 #!/bin/bash
 
-# Update and upgrade the system
+# Script Name:	                file-server-deployment.sh
+# Author:				          Juan Maldonado
+# Date of lastest revision:	 6/10/2024
+# Purpose:				           This script automates the deployment of a file server.
+
+
+# This updates and upgrades the system OS
 sudo apt update && sudo apt upgrade -y
 
-# Install necessary packages
+# This installs the necessary packages for samba and netdata tools
 sudo apt install -y samba netdata
 
-# Configure Samba
+# This configures Samba file
 SAMBA_CONF="/etc/samba/smb.conf"
 SHARED_DIR="/srv/samba/share"
 USERNAME="sambauser"
 PASSWORD="password"
 
-# Create a shared directory
+# This creates a shared directory and prevents root user access to file server
 sudo mkdir -p $SHARED_DIR
 sudo chown -R nobody:nogroup $SHARED_DIR
 sudo chmod -R 0775 $SHARED_DIR
 
-# Backup original Samba configuration file
+# This backs up the original Samba configuration file ( in case of rollback needs)
 sudo cp $SAMBA_CONF "$SAMBA_CONF.bak"
 
-# Configure Samba
+# This configures Samba, the firewall on linux, and applies changes 
 cat <<EOL | sudo tee -a $SAMBA_CONF
 
 [share]
@@ -52,4 +58,4 @@ if sudo ufw status | grep -q "Status: active"; then
     sudo ufw allow 19999/tcp
 fi
 
-echo "Deployment complete. Access Samba share at \\<server_ip>\share and Netdata at http://<server_ip>:19999"
+echo "Deployment complete. Access Samba share at \\<192.168.1.10>\share and Netdata at http://<192.168.1.10>:19999"
